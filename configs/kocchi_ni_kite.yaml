@@ -1,0 +1,138 @@
+# =============================================================================
+# Production config — 「こっちに来て」(kocchi ni kite / come here)
+# =============================================================================
+#
+# Install:   uv sync --extra train --extra voxcpm
+# Prefetch:  livekit-wakeword setup --config configs/kocchi_ni_kite.yaml
+# Pipeline:  livekit-wakeword run configs/kocchi_ni_kite.yaml
+#
+# Japanese requires tts_backend: voxcpm (Piper is English-US only).
+# Auto adversarial negatives are CMUdict-biased — use custom_negative_phrases
+# for phonetically similar Japanese alternatives.
+#
+# Schema: WakeWordConfig in src/livekit/wakeword/config.py
+# =============================================================================
+
+model_name: kocchi_ni_kite
+
+# -----------------------------------------------------------------------------
+# target_phrases — positives to synthesize and defend against via adversarial negatives
+# -----------------------------------------------------------------------------
+target_phrases:
+  - "こっちに来て"
+  - "こちらに来て"   # polite/formal spelling variant
+
+# =============================================================================
+# Data generation
+# =============================================================================
+
+tts_backend: voxcpm
+
+n_samples: 25000
+n_samples_val: 5000
+n_background_samples: 2000
+n_background_samples_val: 500
+tts_batch_size: 50
+
+# Phonetically similar Japanese phrases that must NOT trigger the model
+custom_negative_phrases:
+  - "来て"                 # kite (come — alone, too short)
+  - "来てください"           # kite kudasai (please come)
+  - "こっちに来て下さい"      # kocchi ni kite kudasai (please come here)
+  - "そっちに来て"           # socchi ni kite (come over there)
+  - "あっちに来て"           # acchi ni kite (come over that way)
+  - "こっちを見て"           # kocchi wo mite (look here)
+  - "こっちに行って"          # kocchi ni itte (go this way)
+  - "こっちに座って"          # kocchi ni suwatte (sit here)
+  - "こっちに"              # kocchi ni (over here — alone)
+  - "こっちへ来て"           # kocchi e kite (come this way — particle variant)
+  - "そこに来て"             # soko ni kite (come there)
+  - "早く来て"              # hayaku kite (come quickly)
+
+# =============================================================================
+# Paths
+# =============================================================================
+
+data_dir: ./data
+output_dir: ./output
+
+# =============================================================================
+# VoxCPM TTS settings
+# =============================================================================
+
+voxcpm_tts:
+  model_id: openbmb/VoxCPM2
+  model_cache_relpath: voxcpm/VoxCPM2
+  local_model_path: null
+  load_denoiser: false
+  cfg_values: [1.5, 2.0, 2.5, 3.0]
+  inference_timesteps_list: [8, 10, 12]
+  voice_design_prompts:
+    # Japanese-specific personas
+    - "A native Japanese female speaker, clear mid-pitch voice, polite formal tone, moderate pace"
+    - "A native Japanese male speaker, warm baritone, calm and steady, professional"
+    - "A Japanese woman in her thirties, smooth voice, measured pace, clear articulation"
+    - "A Japanese man in his forties, deep resonant voice, deliberate pace, authoritative"
+    - "A young Japanese woman, bright energetic voice, slightly faster pace, friendly"
+    - "A young Japanese man, light tenor, conversational pace, casual tone"
+    - "An older Japanese woman, gentle soft voice, slower pace, kind tone"
+    - "An older Japanese man, gravelly voice, steady moderate pace, matter-of-fact"
+    - "A Japanese professional, neutral standard accent, clear enunciation, even pace"
+    - "A Japanese speaker with a Tokyo dialect, polished speech, medium pace"
+    # Generic multilingual personas for robustness
+    - "A young adult woman, clear mid-pitch voice, moderate pace, calm and professional"
+    - "A young adult man, warm baritone, steady pace, friendly and articulate"
+    - "A middle-aged woman, slightly low pitch, measured pace, confident tone"
+    - "A middle-aged man, deep resonant voice, slow deliberate pace"
+    - "An older adult woman, soft gentle voice, slower pace, kind tone"
+    - "An older adult man, gravelly tenor, moderate pace, matter-of-fact"
+    - "A young woman, bright energetic tone, slightly faster pace"
+    - "A young man, light tenor, quick conversational pace"
+    - "A speaker with a higher pitch, enthusiastic and upbeat, medium-fast pace"
+    - "A speaker with a lower pitch, relaxed and laid-back, slower pace"
+    - "A confident presenter voice, strong projection, moderate speed"
+    - "A quiet intimate voice, close-mic feel, slow and clear"
+    - "A serious formal voice, minimal emotion, precise articulation"
+    - "A cheerful animated voice, wide pitch range, lively pace"
+    - "A tired but clear voice, subdued energy, steady pace"
+    - "A robust athletic-sounding voice, strong and direct, medium pace"
+    - "A crisp precise voice, minimal accent, fast clear speech"
+    - "A husky voice, low energy, medium-slow pace"
+    - "A breathy soft voice, gentle, slower pace"
+    - "A monotone flat delivery, robotic clarity, even speed"
+
+# =============================================================================
+# Augmentation
+# =============================================================================
+
+augmentation:
+  clip_duration: 2.0
+  batch_size: 16
+  rounds: 3
+  background_paths: [./data/backgrounds]
+  rir_paths: [./data/rirs]
+
+# =============================================================================
+# Model architecture
+# =============================================================================
+
+model:
+  model_type: conv_attention
+  model_size: medium
+
+# =============================================================================
+# Training
+# =============================================================================
+
+steps: 100000
+learning_rate: 0.0001
+weight_decay: 0.01
+label_smoothing: 0.05
+max_negative_weight: 3000
+target_fp_per_hour: 0.1
+
+batch_n_per_class:
+  positive: 50
+  adversarial_negative: 50
+  ACAV100M_sample: 1024
+  background_noise: 50

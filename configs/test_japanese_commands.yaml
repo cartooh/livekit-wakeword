@@ -1,0 +1,84 @@
+# Quick smoke-test config for Japanese command recognition.
+# Tests both commands in a single tiny run to verify the pipeline end-to-end.
+# Use with: livekit-wakeword setup --config configs/test_japanese_commands.yaml
+#           livekit-wakeword run configs/test_japanese_commands.yaml
+#
+# For production training, use:
+#   configs/tomatte_kudasai.yaml  — 「止まって下さい」
+#   configs/kocchi_ni_kite.yaml   — 「こっちに来て」
+
+model_name: test_japanese_commands
+
+target_phrases:
+  - "止まって下さい"   # tomatte kudasai (please stop)
+  - "こっちに来て"     # kocchi ni kite (come here)
+
+# ============================================================================
+# Data generation
+# ============================================================================
+
+tts_backend: voxcpm
+
+n_samples: 24
+n_samples_val: 8
+n_background_samples: 40
+n_background_samples_val: 8
+tts_batch_size: 4
+
+custom_negative_phrases:
+  - "止まって"
+  - "来て"
+  - "待って下さい"
+  - "こっちを見て"
+
+# ============================================================================
+# VoxCPM TTS settings (minimal grid for fast smoke runs)
+# ============================================================================
+
+voxcpm_tts:
+  voice_design_prompts:
+    - "A native Japanese female speaker, clear mid-pitch voice, moderate pace, calm tone"
+    - "A native Japanese male speaker, warm baritone, steady pace, friendly tone"
+  cfg_values: [2.0]
+  inference_timesteps_list: [10]
+
+# ============================================================================
+# Paths
+# ============================================================================
+
+data_dir: ./data
+output_dir: ./output
+
+# ============================================================================
+# Augmentation
+# ============================================================================
+
+augmentation:
+  clip_duration: 2.0
+  batch_size: 8
+  rounds: 2
+  background_paths: [./data/backgrounds]
+  rir_paths: [./data/rirs]
+
+# ============================================================================
+# Model architecture
+# ============================================================================
+
+model:
+  model_type: dnn
+  model_size: tiny
+
+# ============================================================================
+# Training
+# ============================================================================
+
+steps: 500
+learning_rate: 0.001
+max_negative_weight: 1000
+target_fp_per_hour: 1.0
+
+batch_n_per_class:
+  positive: 10
+  adversarial_negative: 10
+  ACAV100M_sample: 64
+  background_noise: 10
